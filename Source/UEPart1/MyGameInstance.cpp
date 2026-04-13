@@ -5,6 +5,8 @@
 #include "Student.h"
 #include "Teacher.h"
 #include "Staff.h"
+#include "Card.h"
+#include "CourseInfo.h"
 
 UMyGameInstance::UMyGameInstance()
 {
@@ -17,43 +19,25 @@ void UMyGameInstance::Init()
 	Super::Init();
 
 	UE_LOG(LogTemp, Log, TEXT("=================="));
-	
-	// TArray 는 언리얼 엔진이 지원하는 동적 배열
-	// STL 의 std::vector와 동일한 기능 제공
-	// 언리얼 오브젝트에 특화된 동적 배열
-	TArray<UPerson*> Persons =
-	{
-		NewObject<UStudent>(),
-		NewObject<UTeacher>(),
-		NewObject<UStaff>()
-	};
 
-	// 이름 출력
-	for (const auto* Person : Persons)
-	{
-		UE_LOG(LogTemp, Log, TEXT("구성원 이름 : %s"), *Person->GetName());
-	}
+	// 학사 정보 객체 생성
+	CourseInfo = NewObject<UCourseInfo>(this);
 
-	UE_LOG(LogTemp, Log, TEXT("=================="));
+	// 3명의 학생 추가
+	UStudent* Student1 = NewObject<UStudent>();
+	Student1->SetName(TEXT("학생1"));
+	UStudent* Student2 = NewObject<UStudent>();
+	Student2->SetName(TEXT("학생2"));
+	UStudent* Student3 = NewObject<UStudent>();
+	Student3->SetName(TEXT("학생3"));
 
-	for (UPerson* Person : Persons)
-	{
-		// 인터페이스로 형변환
-		// 다운 캐스팅 (위험한 형변환 - RTTI 고려해야함)
-		ILessonInterface* LessonInterface = Cast<ILessonInterface>(Person);
+	// 알림에 구독
+	CourseInfo->OnChanged.AddUObject(Student1, &UStudent::GetNotification);
+	CourseInfo->OnChanged.AddUObject(Student2, &UStudent::GetNotification);
+	CourseInfo->OnChanged.AddUObject(Student3, &UStudent::GetNotification);
 
-		if (LessonInterface)
-		{
-			UE_LOG(LogTemp, Log, TEXT("%s님은 수업에 참여할 수 있습니다"), *Person->GetName());
-			LessonInterface->DoLesson();
-		}
-		else
-		{
-			UE_LOG(LogTemp, Log, TEXT("%s님은 수업에 참여할 수 없습니다"), *Person->GetName());
-		}
-	}
+	// 변경된 학사 정보 발행
+	CourseInfo->ChangeCourseInfo(SchoolName, TEXT("변경된 학사 정보"));
 
 	UE_LOG(LogTemp, Log, TEXT("=================="));
-
-
 }

@@ -19,8 +19,4 @@ public:
 	UTeacher();
 	
 	virtual void DoLesson() override;
-
-private:
-	UPROPERTY()
-	int32 Id;
 };
