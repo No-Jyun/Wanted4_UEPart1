@@ -7,6 +7,7 @@
 #include "Staff.h"
 #include "Card.h"
 #include "CourseInfo.h"
+#include "Algo/Accumulate.h"
 
 UMyGameInstance::UMyGameInstance()
 {
@@ -20,24 +21,73 @@ void UMyGameInstance::Init()
 
 	UE_LOG(LogTemp, Log, TEXT("=================="));
 
-	// 학사 정보 객체 생성
-	CourseInfo = NewObject<UCourseInfo>(this);
+	// TArray 사용
+	const int32 ArrayNum = 10;
+	TArray<int32> Int32Array;
 
-	// 3명의 학생 추가
-	UStudent* Student1 = NewObject<UStudent>();
-	Student1->SetName(TEXT("학생1"));
-	UStudent* Student2 = NewObject<UStudent>();
-	Student2->SetName(TEXT("학생2"));
-	UStudent* Student3 = NewObject<UStudent>();
-	Student3->SetName(TEXT("학생3"));
+	for (int32 ix = 0; ix < ArrayNum; ix++)
+	{
+		Int32Array.Add(ix);
+	}
 
-	// 알림에 구독
-	CourseInfo->OnChanged.AddUObject(Student1, &UStudent::GetNotification);
-	CourseInfo->OnChanged.AddUObject(Student2, &UStudent::GetNotification);
-	CourseInfo->OnChanged.AddUObject(Student3, &UStudent::GetNotification);
+	// 짝수 제거
+	Int32Array.RemoveAll(
+		// [] - 캡처
+		// () - 파라미터
+		// -> - 반환형
+		// { } 본문
+		[](int32 Val) -> bool
+		{
+			return Val % 2 == 0;
+		}
+	);
 
-	// 변경된 학사 정보 발행
-	CourseInfo->ChangeCourseInfo(SchoolName, TEXT("변경된 학사 정보"));
+	// 짝수 삽입
+	Int32Array += {2, 4, 6, 8, 10};
 
-	UE_LOG(LogTemp, Log, TEXT("=================="));
+	// 비교 (동등 비교)
+	TArray<int32> Int32ArrayCompare;
+	int32 CArray[] = { 1,3,5,7,9,2,4,6,8,10 };
+
+	Int32ArrayCompare.AddUninitialized(ArrayNum);
+	// C 스타일 배열을 TArray에 메모리 복사
+	FMemory::Memcpy(Int32ArrayCompare.GetData(), CArray, sizeof(int32) * ArrayNum);
+
+	// 어서트 (크래시를 발생시키지 않고, 출력 로그 창에 오류 메시지 출력)
+	ensureAlways(Int32Array == Int32ArrayCompare);
+
+	// 합계
+	int32 Sum = 0;
+	for (const int32& Int32Num : Int32Array)
+	{
+		Sum += Int32Num;
+	}
+
+	// 알고리즘 활용 (합계 구하기)
+	int32 SumByAlgo = Algo::Accumulate(Int32Array, 0);
+	ensureAlways(Sum == SumByAlgo);
+
+	UE_LOG(LogTemp, Log, TEXT("Sum = %d | SumByAlgo = %d | Sum == SumByAlgo : %s"),
+		Sum, SumByAlgo, Sum == SumByAlgo ? TEXT("True") : TEXT("False"));
+
+	// TSet 사용
+	TSet<int32> Int32Set;
+	for (int32 ix = 1; ix <= ArrayNum; ix++)
+	{
+		Int32Set.Add(ix);
+	}
+
+	// 제거
+	Int32Set.Remove(2);
+	Int32Set.Remove(4);
+	Int32Set.Remove(6);
+	Int32Set.Remove(8);
+	Int32Set.Remove(10);
+
+	// 추가
+	Int32Set.Add(2);
+	Int32Set.Add(4);
+	Int32Set.Add(6);
+	Int32Set.Add(8);
+	Int32Set.Add(10);
 }
