@@ -3,6 +3,7 @@
 
 #include "MyGameInstance.h"
 #include "StudentData.h"
+#include "Student.h"
 
 UMyGameInstance::UMyGameInstance()
 {
@@ -27,7 +28,7 @@ void UMyGameInstance::Init()
 
 		// 저장 경로 + 파일 이름
 		FString RawDataAbsolutePath = FPaths::Combine(SavePath, RawDataFileName);
-		
+
 		// 경로 출력
 		UE_LOG(LogTemp, Log, TEXT("저장할 파일 전체 경로 : %s"), *RawDataAbsolutePath);
 
@@ -43,8 +44,9 @@ void UMyGameInstance::Init()
 		if (RawFileWriteAr)
 		{
 			// 파일에 기록
-			*RawFileWriteAr << RawDataSource.Order;
-			*RawFileWriteAr << RawDataSource.Name;
+			//*RawFileWriteAr << RawDataSource.Order;
+			//*RawFileWriteAr << RawDataSource.Name;
+			*RawFileWriteAr << RawDataSource;
 
 			// 파일 닫기
 			RawFileWriteAr->Close();
@@ -53,5 +55,84 @@ void UMyGameInstance::Init()
 			delete RawFileWriteAr;
 			RawFileWriteAr = nullptr;
 		}
+
+		// 파일로 부터 데이터를 읽어와서 구조체에 복원
+		// 역직렬화 (Deserialization)
+		FStudentData RawDataDeserialized;
+
+		// 파일 읽기를 위한 아카이브 얻어오기
+		FArchive* RawFileReaderAr = IFileManager::Get().CreateFileReader(*RawDataAbsolutePath);
+
+		if (RawFileReaderAr)
+		{
+			// 구조체로 값 전달
+			*RawFileReaderAr << RawDataDeserialized;
+
+			// 파일 닫기
+			RawFileReaderAr->Close();
+
+			// 객체 메모리 해제
+			delete RawFileReaderAr;
+			RawFileReaderAr = nullptr;
+
+			// 복원된 구조체 값 출력
+			UE_LOG(LogTemp, Log, TEXT("[RawData] 이름 : %s, 순번 : %d"), *RawDataDeserialized.Name, RawDataDeserialized.Order);
+		}
+	}
+	
+	// 언리얼 오브젝트 생성
+	StudentSource = NewObject<UStudent>();
+	StudentSource->SetName(TEXT("나다"));
+	StudentSource->SetOrder(26);
+
+	// 직렬화 테스트를 위한 구간 나누기
+	{
+		const FString& ObjectDataFileName(TEXT("ObjectData.bin"));
+
+		// 파일이름을 포함한 경로 생성
+		FString ObjectDataAbsolutePath = FPaths::Combine(SavePath, ObjectDataFileName);
+
+		// 경로 값 정리
+		FPaths::MakeStandardFilename(ObjectDataAbsolutePath);
+
+		// 메모리를 담을 버퍼
+		TArray<uint8> BufferArray;
+		FMemoryWriter MemoryWriter(BufferArray);
+		// MemoryWriter를 사용해서 언리얼 오브젝트를 직렬화해 값을 기록
+		StudentSource->Serialize(MemoryWriter);
+		
+		// 파일에 기록
+		TUniquePtr<FArchive> FileWriterAr = 
+			TUniquePtr<FArchive>(IFileManager::Get().CreateFileWriter(*ObjectDataAbsolutePath));
+
+		// 파일을 잘 열었는지 확인
+		if (FileWriterAr)
+		{
+			// 파일에 기록 처리
+			*FileWriterAr << BufferArray;
+
+			// 파일 닫기
+			FileWriterAr->Close();
+		}
+
+		// 언리얼 오브젝트로 복원
+		TArray<uint8> BufferArrayFromFile;
+		TUniquePtr<FArchive> FileReaderAr =
+			TUniquePtr<FArchive>(IFileManager::Get().CreateFileReader(*ObjectDataAbsolutePath));
+
+		if (FileReaderAr)
+		{
+			*FileReaderAr << BufferArrayFromFile;
+			FileReaderAr->Close();
+
+			// 바이트 배열에 저장된 정보를 메모리 리더를 통해 객체로 복원
+			FMemoryReader MemoryReaderAr(BufferArrayFromFile);
+			UStudent* StudentDest = NewObject<UStudent>();
+			StudentDest->Serialize(MemoryReaderAr);
+
+			// 출력
+			UE_LOG(LogTemp, Log, TEXT("[ObjectData] 이름 : %s, 순번 : %d"), *StudentDest->GetName(), StudentDest->GetOrder());
+
+		}		
 	}
 }
