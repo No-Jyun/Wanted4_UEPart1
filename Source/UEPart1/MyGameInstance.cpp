@@ -4,6 +4,25 @@
 #include "MyGameInstance.h"
 #include "StudentData.h"
 #include "Student.h"
+#include "JsonObjectConverter.h"
+#include "UObject/SavePackage.h"
+
+// static 변수 초기화
+const FString UMyGameInstance::PackageName = TEXT("/Game/Student");
+const FString UMyGameInstance::AssetName = TEXT("Student");
+
+// UStudent 출력용 함수
+void PrintStudentInfo(const UStudent* InStudent, const FString& InTag)
+{
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[%s] 이름: %s, 순번: %d"),
+		*InTag,
+		*InStudent->GetName(),
+		InStudent->GetOrder()
+	);
+}
 
 UMyGameInstance::UMyGameInstance()
 {
@@ -134,5 +153,188 @@ void UMyGameInstance::Init()
 			UE_LOG(LogTemp, Log, TEXT("[ObjectData] 이름 : %s, 순번 : %d"), *StudentDest->GetName(), StudentDest->GetOrder());
 
 		}		
+	}
+
+	// JSON(JavaScript Object Notation) 직렬화.
+	//{
+	//	const FString JsonDataFileName(
+	//		TEXT("StudentJsonData.txt")
+	//	);
+
+	//	// 저장할 파일 경로 값.
+	//	FString JsonDataAbsolutePath
+	//		= FPaths::Combine(SavePath, JsonDataFileName);
+	//	// 경로 값 정리.
+	//	FPaths::MakeStandardFilename(JsonDataAbsolutePath);
+
+	//	// JSON 직렬화 과정.
+	//	// UObject -> JSON Object -> JSON 문자열 -> 기록.
+	//	TSharedRef<FJsonObject> JsonObjectRef
+	//		= MakeShared<FJsonObject>();
+	//	// JSON 오브젝트로 변환.
+	//	FJsonObjectConverter::UStructToJsonObject(
+	//		StudentSource->StaticClass(),
+	//		StudentSource,
+	//		JsonObjectRef
+	//	);
+
+	//	// 직렬화.
+	//	FString JsonOutString;
+	//	TSharedRef<TJsonWriter<TCHAR>> JsonWriterAr =
+	//		TJsonWriterFactory<TCHAR>::Create(&JsonOutString);
+
+	//	if (FJsonSerializer::Serialize(JsonObjectRef, JsonWriterAr))
+	//	{
+	//		// 성공한 경우에 파일에 저장.
+	//		FFileHelper::SaveStringToFile(
+	//			JsonOutString,
+	//			*JsonDataAbsolutePath
+	//		);
+	//	}
+
+	//	// 역직렬화.
+	//	FString JsonInString;
+	//	// 파일에서 문자열로 읽어오기.
+	//	FFileHelper::LoadFileToString(
+	//		JsonInString, *JsonDataAbsolutePath
+	//	);
+
+	//	// 역직렬화를 위한 아카이브 생성.
+	//	TSharedRef<TJsonReader<TCHAR>> JsonReaderAr
+	//		= TJsonReaderFactory<TCHAR>::Create(JsonInString);
+
+	//	TSharedPtr<FJsonObject> JsonObjectDest;
+	//	if (FJsonSerializer::Deserialize(
+	//		JsonReaderAr, JsonObjectDest))
+	//	{
+	//		// 언리얼 오브젝트 생성 후 변환.
+	//		UStudent* JsonStudentDest = NewObject<UStudent>();
+	//		// JsonObjectConverter를 활용해 변환.
+	//		if (FJsonObjectConverter::JsonObjectToUStruct(
+	//			JsonObjectDest.ToSharedRef(),
+	//			UStudent::StaticClass(),
+	//			JsonStudentDest))
+	//		{
+	//			UE_LOG(
+	//				LogTemp,
+	//				Log,
+	//				TEXT("[JsonData] 이름: %s, 순번: %d"),
+	//				*JsonStudentDest->GetName(),
+	//				JsonStudentDest->GetOrder()
+	//			);
+	//		}
+	//	}
+	//}
+
+	// 패키지 저장 함수 실행 (호출)
+	//SaveStudentPackage();
+
+	// 패키지 로드 함수 실행
+	//LoadStudentPackage();
+
+	// 경로 값을 사용해 오브젝트를 로드하는 함수 실행
+	LoadStudentObject();
+}
+
+void UMyGameInstance::SaveStudentPackage() const
+{
+	// 예외처리
+	UPackage* StudentPackage = LoadPackage(nullptr, *PackageName, LOAD_None);
+
+	// 패키지가 이미 있다면, 애셋을 완전히 처리
+	if (StudentPackage)
+	{
+		StudentPackage->FullyLoad();
+	}
+
+	// 패키지 생성
+	StudentPackage = CreatePackage(*PackageName);
+	// 패키지에 사용할 플래그 지정
+	// RF_Public | RF_Standalone 두 플래그 값이 가장 일반적
+	EObjectFlags ObjectFlag = RF_Public | RF_Standalone;
+
+	// 패키지에 저장할 언리얼 오브젝트 생성
+	UStudent* Student = NewObject<UStudent>(StudentPackage, UStudent::StaticClass(), *AssetName, ObjectFlag);
+
+	Student->SetName(TEXT("안희준"));
+	Student->SetOrder(10);
+
+	// 서브 오브젝트 추가
+	const int32 SubObjectCount = 10;
+	for (int32 ix = 1; ix <= SubObjectCount; ix++)
+	{
+		// 생성할 객체의 이름
+		FString SubObjectName = FString::Printf(TEXT("Student%d"), ix);
+
+		// 객체 생성
+		UStudent* SubStudent = 
+			NewObject<UStudent>(Student, UStudent::StaticClass(), *SubObjectName, ObjectFlag);
+
+		// 값 설정
+		SubStudent->SetName(FString::Printf(TEXT("학생%d"), ix));
+		SubStudent->SetOrder(ix);
+	}
+
+	// 패키지 저장
+	FString PackageFileName = FPackageName::LongPackageNameToFilename(
+		PackageName, FPackageName::GetAssetPackageExtension()
+	);
+
+	// 참고로 이렇게도 가능
+	//FString PackageFileName2 = FPaths::Combine(
+	//	FPlatformMisc::ProjectDir(), TEXT("Content"), FString::Printf(TEXT("%s%s"), *PackageName, *FPackageName::GetAssetPackageExtension());
+
+	// 경로값 정리
+	FPaths::MakeStandardFilename(PackageFileName);
+
+	// 저장할 옵션 설정
+	FSavePackageArgs SaveArgs;
+	SaveArgs.TopLevelFlags = ObjectFlag;
+
+	// 패키지 저장
+	if (UPackage::SavePackage(StudentPackage, nullptr, *PackageFileName, SaveArgs))
+	{
+		UE_LOG(LogTemp, Log, TEXT("패키지가 성공적으로 저장되었습니다"));
+	}
+}
+
+void UMyGameInstance::LoadStudentPackage() const
+{
+	// 패키지 로드
+	UPackage* StudentPackage = LoadPackage(nullptr, *PackageName, LOAD_None);
+
+	// 패키지 로드 실패 처리
+	if (!StudentPackage)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("패키지를 찾을 수 없습니다"));
+		return;
+	}
+
+	// 완전히 로드되도록 함수 실행
+	StudentPackage->FullyLoad();
+
+	// 패키지 안에 있는 언리얼 오브젝트(애셋) 검색
+	UStudent* Student = FindObject<UStudent>(StudentPackage, *AssetName);
+
+	// 하위 오브젝트는 에디터에 노출되지 않고 객체의 이름 값을 통해 스크립트에서 검색 가능
+
+	if (Student)
+	{
+		// 로드한 결과 출력
+		PrintStudentInfo(Student, TEXT("FindObject Asset"));
+	}
+}
+
+void UMyGameInstance::LoadStudentObject() const
+{
+	// 오브젝트 경로 값
+	const FString SoftObjectPath = FString::Printf(TEXT("%s.%s"), *PackageName, *AssetName);
+
+	// 오브젝트 로드
+	UStudent* Student = LoadObject<UStudent>(nullptr, *SoftObjectPath);
+	if (Student)
+	{
+		// 로드한 오브젝트 정보 출력
+		PrintStudentInfo(Student, TEXT("LoadObject Asset"));
 	}
 }

@@ -27,10 +27,10 @@ public:
 	void SetName(const FString& InName) { Name = InName; }
 
 private:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, Category = "Data")
 	int32 Order;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, Category = "Data")
 	FString Name;
 
 };
